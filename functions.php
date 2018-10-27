@@ -13,11 +13,11 @@
 			 if (isset($_SESSION['id']) && isset($_COOKIE['token']) && isset($_COOKIE['serial'])
 			) {
 
-			 	$query = "SELECT * FROM sessions WHERE sessions_userid = :userid AND sessions_token = :token AND sessions_serial = :serial";
+			 	$query = "SELECT * FROM sessions WHERE session_userid = :userid AND session_token = :token AND session_serial = :serial";
 
 
 
-			 	$id = $_COOKIE['id'];
+			 	$userid = $_COOKIE['userid'];
 			 	$token = $_COOKIE['token'];
 			 	$serial = $_COOKIE['serial'];
 
@@ -25,21 +25,26 @@
 			 	$stmt->execute(array(':userid' => $userid, ':token' => $token, ':serial' => $serial));
 
 			 	$row = $stmt->fetch(PDO::FETCH_ASSOC);
-			 	if ($row['sessions_userid'] > 0) {
+			 	if ($row['session_userid'] > 0) {
 
 			 		if (
-			 			$row['sessions_userid'] == $_COOKIE['id'] &&
-			 			$row['sessions_token'] == $_COOKIE['token'] &&
-			 			$row['sessions_serial'] == $_COOKIE['serial']
+			 			$row['session_userid'] == $_COOKIE['userid'] &&
+			 			$row['session_token'] == $_COOKIE['token'] &&
+			 			$row['session_serial'] == $_COOKIE['serial']
 			 		) {
 
 			 			if (
-			 				$row['sessions_userid'] == $_SESSION['id'] &&
-			 				$row['sessions_token'] == $_SESSION['token'] &&
-			 				$row['sessions_serial'] == $_SESSION['serial']
+			 				$row['session_userid'] == $_SESSION['userid'] &&
+			 				$row['session_token'] == $_SESSION['token'] &&
+			 				$row['session_serial'] == $_SESSION['serial']
 			 			) {
 
 			 				return true;
+			 			}
+			 			else 
+			 			{
+			 			func::createSession($_COOKIE['username'], $_COOKIE['userid'], $_COOKIE['token'], $_COOKIE['serial']);
+						return true;
 			 			}
 			 		}
 			 	}
@@ -49,6 +54,48 @@
 
 
 			 }
+
+		}
+
+		public static function createRecord($dbh, $user_username, $user_id)
+		{
+			$query = "INSERT INTO sessions (session_userid, session_token, session_serial) VALUES (:user_id, :token, :serial);";
+			$dbh->prepare("DELETE FROM sessions WHERE session_userid= :session_userid;")->execute(array(':session_userid' => $user_id));
+
+			$token = func::createString(30);
+			$serial = func::createString(30);
+
+
+			func::createCookie($user_username, $user_id, $token, $serial);
+			func::createSession($user_username, $user_id, $token, $serial);
+
+			$stmt = $dbh->prepare($query);
+			$stmt->execute(array(':user_id' => $user_id, ':token' => $token, ':serial' => $serial));
+
+
+		}
+
+		public static function createCookie($user_username, $user_id, $token, $serial)
+		{
+			setcookie('userid', $user_id, time() + (86400) * 30, "/");
+			setcookie('username', $user_username, time() + (86400) * 30, "/");
+			setcookie('token', $token, time() + (86400) * 30, "/");
+			setcookie('serial', $serial, time() + (86400) * 30, "/");
+		}
+
+
+		public static function createSession($user_username, $user_id, $token, $serial)
+		{
+			if (!isset($_SESSION['id']) || !isset($_COOKIE['PHPSESSID']))
+			{
+				session_start();
+			}
+			$_SESSION['userid'] = $user_id;
+			$_SESSION['token'] = $token;
+			$_SESSION['serial'] = $serial;
+			$_SESSION['username'] = $user_username;
+
+
 
 		}
 
